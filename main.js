@@ -1,33 +1,51 @@
+let winnings = 0;
+let ticketsBought = 0;
 
-const cost = 1;
-function loadData() {
-  const chances = [
-    {odds: 6, winnings: 5},
-    {odds: 78, winnings: 20},
-    {odds: 3054, winnings: 1000},
-    {odds: 610880, winnings: 250000},
-  ]
-  const colors = d3.quantize(d3.interpolateHcl("#b0d5ff", "black"), chances.length)
-  for (var i = 0; i < chances.length; i++) {
-    let chance = chances[i];
-    chance.radius = Math.sqrt(chance.area / Math.PI)
-    chance.color = colors[i]
+const lotto = [
+  {
+    name: '5 Star Draw',
+    cost: 1,
+    chances: [
+      {odds: 6, winnings: 5},
+      {odds: 78, winnings: 20},
+      {odds: 3054, winnings: 1000},
+      {odds: 610880, winnings: 250000},
+    ]
+  },
+  {
+    name: 'Blackout Big Bingo',
+    cost: 5,
+    chances: [
+      {odds: 7, winnings: 5},
+      {odds: 13, winnings: 10},
+      {odds: 50, winnings: 15},
+      {odds: 38, winnings: 20},
+      {odds: 137, winnings: 30},
+      {odds: 144, winnings: 50},
+      {odds: 1097, winnings: 100},
+      {odds: 3254, winnings: 500},
+      {odds: 92188, winnings: 1_000},
+      {odds: 276563, winnings: 50_000},
+    ]
   }
-  return chances
-}
+][1]
+
+const failure_messages = ['nope', 'whoops', 'darn', 'sorry']
 
 const $pointer = document.getElementById('pointer');
 const $winnings = document.getElementById('winnings');
-let winnings = 0;
+const $tippy = [...document.querySelectorAll('.tippy-box,.tippy-arrow')]
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-const data = loadData();
+if (!lotto) throw new Error('lotto not found')
 
 function drawCircle(x, y, radius, color){
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, 2 * Math.PI);
   ctx.fillStyle = color;
   ctx.fill();
+  // ctx.strokeStyle = '#333';
+  // ctx.stroke();
   ctx.closePath();
 }
 
@@ -36,43 +54,52 @@ function draw(){
   const height = canvas.height = window.innerHeight;
   ctx.translate(width / 2, height / 2);
 
+  const colors = d3.quantize(d3.interpolateHslLong("#b0d5ff", "black"), lotto.chances.length)
+  // const colors = d3.quantize(d3.interpolateHslLong("#ad99ff", "black"), lotto.chances.length)
+  // const colors = d3.quantize(d3.interpolateHslLong("#ffba8f", "#420600"), lotto.chances.length)
+  // const colors = d3.quantize(d3.interpolateHsl("#961F08", "#B217E3"), lotto.chances.length)
+  // const colors = d3.quantize(d3.interpolateHcl("#f4e153", "#362142"), lotto.chances.length)
+  // const colors = d3.quantize(d3.interpolateHslLong("blue", "red"), lotto.chances.length)
+  // const colors = d3.quantize(d3.interpolateViridis, lotto.chances.length)
+  // const colors = d3.quantize(d3.interpolateHcl("#a9a9b4", "#d66000"), lotto.chances.length)
+  // const colors = d3.schemeSpectral[lotto.chances.length]
+  lotto.chances.sort((a, b) => a.odds - b.odds)
+
   const pool = width * height;
-  for (var i = 0; i < data.length; i++) {
-    let chance = data[i];
+  for (var i = 0; i < lotto.chances.length; i++) {
+    let chance = lotto.chances[i];
     chance.area = pool / chance.odds;
     chance.radius = Math.sqrt(chance.area / Math.PI)
-    drawCircle(0, 0, chance.radius, chance.color)
+    drawCircle(0, 0, chance.radius, colors[i])
   }
 }
 
-window.onresize = draw;
-window.onload = draw;
+function buyLotto(){
+  ticketsBought++;
+  winnings -= lotto.cost;
+  const x = Math.random() * canvas.width;
+  const y = Math.random() * canvas.height;
+  const dx = x - canvas.width / 2;
+  const dy = y - canvas.height / 2;
+  const won = lotto.chances.findLast(chance => Math.sqrt(dx * dx + dy * dy) < chance.radius)
 
-const [flag] = tippy('#pointer', {
-  content: 'nope',
-  hideOnClick: false,
-})
+  if (won) {
+    won.count++;
+    winnings += won.winnings;
+  }
+  return [x, y, won];
+}
 
-window.onclick = function(e){
-  winnings -= cost;
-  const px = Math.random();
-  const py = Math.random();
-  const x = px * canvas.width - canvas.width / 2;
-  const y = py * canvas.height - canvas.height / 2;
-  const chance = data.findLast(chance => {
-    const dx = x - 0;
-    const dy = y - 0;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    return distance < chance.radius
-  })
+function showLottoResults(x, y, won) {
   flag.show()
-  $pointer.style.left = (px*100) + '%';
-  $pointer.style.top = (py*100) + '%';
-  if (!chance) {
-    flag.setContent('nope')
+  $pointer.style.left = x + 'px';
+  $pointer.style.top = y + 'px';
+  if (!won) {
+    flag.setContent(failure_messages[Math.floor(Math.random() * failure_messages.length)])
+    flag.popper.classList.remove('won')
   } else {
-    flag.setContent('$' + chance.winnings)
-    winnings += chance.winnings;
+    flag.setContent('$' + won.winnings)
+    flag.popper.classList.add('won')
   }
   
   if(winnings < 0) {
@@ -84,6 +111,23 @@ window.onclick = function(e){
   }
 }
 
-// flag.show()
+window.onresize = draw;
+window.onload = draw;
+window.onclick = () => {
+  const [px, py, won] = buyLotto()
+  showLottoResults(px, py, won)
+};
 
-// d3.interpolateHslLong("red", "blue")(0.5)
+const [flag] = tippy('#pointer', {
+  hideOnClick: false,
+})
+
+// lotto.chances.reduce((sum, chance) =>  sum + chance.winnings * chance.count, 0) - ticketsBought * lotto.cost
+
+function simulate(rounds) {
+  for(var i = 0; i <= rounds; i++) {
+    buyLotto()
+    if (ticketsBought % 100000 === 0) console.log(winnings, ticketsBought, lotto.chances.map(d => d.count))
+  }
+  console.table(lotto.chances)
+}
