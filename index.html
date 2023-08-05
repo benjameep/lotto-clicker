@@ -26,21 +26,31 @@
       }
       .tippy-content {
         user-select: none;
+        font-size: 1.5rem;
+        padding: .5rem 1rem;
       }
-      #winnings {
+      #stats {
         position: absolute;
         bottom: 5%;
         left: 50%;
         transform: translate(-50%, 0%);
-        /* text-align: center; */
+      }
+      #net {
+        background-color: rgb(152, 152, 152);
+        padding: 1rem 2rem;
+        border-radius: 1rem;
         font-size: 3rem;
         font-weight: bold;
-        color: #009606;
+        color: white;
         user-select: none;
-        /* text-shadow: 0 0 10px black; */
+        filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.25));
+        text-align: center;
       }
-      #winnings.negative {
-        color: #D11010;
+      #net.positive {
+        background-color: #009606;
+      }
+      #net.negative {
+        background-color: #D11010;
       }
 
       .won .tippy-box {
@@ -49,12 +59,41 @@
       .won .tippy-arrow {
         color: #009606;
       }
+      
+      #totals {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        grid-template-rows: 1fr 1fr;
+        margin-top: 1rem;
+        color: #969696;
+        user-select: none;
+        align-items: center;
+      }
+
+      .label {
+        text-align: right;
+        font-size: 1rem;
+        padding-right: 0.4rem;
+      }
+
+      .amount {
+        text-align: left;
+        font-size: 1.5rem;
+      }
     </style>
   </head>
   <body>
     <canvas id="canvas"></canvas>
     <div id="pointer"></div>
-    <div id="winnings"></div>
+    <div id="stats">
+      <div id="net">$0</div>
+      <div id="totals">
+        <div class="label">spent</div>
+        <div id="spent" class="amount">$0</div>
+        <div class="label">won</div>
+        <div id="won" class="amount">$0</div>
+      </div>
+    </div>
     <script src="main.js"></script>
   </body>
 </html>

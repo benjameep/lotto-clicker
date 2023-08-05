@@ -1,11 +1,12 @@
-let winnings = 0;
+let spent = 0;
+let won = 0;
 let ticketsBought = 0;
 
 const lotto = [
   {
     name: '5 Star Draw',
-    cost: 1,
-    cumulative: false,
+    cost: 5,
+    cumulative: true,
     chances: [
       {odds: 6, winnings: 5},
       {odds: 78, winnings: 20},
@@ -35,7 +36,9 @@ const lotto = [
 const failure_messages = ['nope', 'whoops', 'darn', 'sorry']
 
 const $pointer = document.getElementById('pointer');
-const $winnings = document.getElementById('winnings');
+const $net = document.getElementById('net');
+const $spent = document.getElementById('spent');
+const $won = document.getElementById('won');
 const $tippy = [...document.querySelectorAll('.tippy-box,.tippy-arrow')]
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
@@ -98,47 +101,56 @@ function draw(){
 
 function buyLotto(){
   ticketsBought++;
-  winnings -= lotto.cost;
+  spent += lotto.cost;
   const x = Math.random() * canvas.width;
   const y = Math.random() * canvas.height;
   const dx = x - cx;
   const dy = y - cy;
-  const won = lotto.chances.findLast(chance => Math.sqrt(dx * dx + dy * dy) < chance.radius)
+  const prize = lotto.chances.findLast(chance => Math.sqrt(dx * dx + dy * dy) < chance.radius)
 
-  if (won) {
-    won.count = won.count || 0;
-    won.count++;
-    winnings += won.winnings;
+  if (prize) {
+    prize.count = prize.count || 0;
+    prize.count++;
+    won += prize.winnings;
   }
-  return [x, y, won];
+  return [x, y, prize?.winnings];
 }
 
-function showLottoResults(x, y, won) {
+function showLottoResults(x, y, amount) {
   flag.show()
   $pointer.style.left = x + 'px';
   $pointer.style.top = y + 'px';
-  if (!won) {
+  if (amount) {
+    flag.setContent('$' + amount)
+    flag.popper.classList.add('won')
+  } else {
     flag.setContent(failure_messages[Math.floor(Math.random() * failure_messages.length)])
     flag.popper.classList.remove('won')
-  } else {
-    flag.setContent('$' + won.winnings)
-    flag.popper.classList.add('won')
   }
   
-  if(winnings < 0) {
-    $winnings.textContent = '-$' + Math.abs(winnings);
-    $winnings.classList.add('negative')
+  const net = won - spent;
+  $spent.textContent = '$' + spent;
+  $won.textContent = '$' + won;
+  if(net < 0) {
+    $net.textContent = '-$' + Math.abs(net);
+    $net.classList.remove('positive')
+    $net.classList.add('negative')
+  } else if (net > 0) {
+    $net.textContent = '$' + net;
+    $net.classList.remove('negative')
+    $net.classList.add('positive')
   } else {
-    $winnings.textContent = '$' + winnings;
-    $winnings.classList.remove('negative')
+    $net.textContent = '$' + net;
+    $net.classList.remove('negative')
+    $net.classList.remove('positive')
   }
 }
 
 window.onresize = draw;
 window.onload = draw;
 window.onclick = () => {
-  const [px, py, won] = buyLotto()
-  showLottoResults(px, py, won)
+  const [x, y, amount] = buyLotto()
+  showLottoResults(x, y, amount)
 };
 
 const [flag] = tippy('#pointer', {
@@ -150,7 +162,7 @@ const [flag] = tippy('#pointer', {
 function simulate(rounds) {
   for(var i = 0; i <= rounds; i++) {
     buyLotto()
-    if (ticketsBought % 100000 === 0) console.log(winnings, ticketsBought, lotto.chances.map(d => d.count))
+    if (ticketsBought % 100000 === 0) console.log(net, ticketsBought, lotto.chances.map(d => d.count))
   }
   console.table(lotto.chances)
 }
