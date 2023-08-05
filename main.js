@@ -5,6 +5,7 @@ const lotto = [
   {
     name: '5 Star Draw',
     cost: 1,
+    cumulative: false,
     chances: [
       {odds: 6, winnings: 5},
       {odds: 78, winnings: 20},
@@ -15,6 +16,7 @@ const lotto = [
   {
     name: 'Blackout Big Bingo',
     cost: 5,
+    cumulative: false,
     chances: [
       {odds: 7, winnings: 5},
       {odds: 13, winnings: 10},
@@ -39,6 +41,9 @@ const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 if (!lotto) throw new Error('lotto not found')
 
+let cx = 0;
+let cy = 0;
+
 function drawCircle(x, y, radius, color){
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, 2 * Math.PI);
@@ -49,11 +54,26 @@ function drawCircle(x, y, radius, color){
   ctx.closePath();
 }
 
+function calcAreas(pool){
+  var inner = 0
+  var areas = []
+  for(let i = lotto.chances.length-1; i >= 0; i--) {
+      let chance = lotto.chances[i]
+      let area = pool / chance.odds
+      if (!lotto.cumulative) {
+        area += inner
+        inner = area
+      }
+      areas.unshift(area)
+  }
+  return areas
+}
+
 function draw(){
   const width = canvas.width = window.innerWidth;
   const height = canvas.height = window.innerHeight;
-  ctx.translate(width / 2, height / 2);
-
+  cx = width *  0.5;
+  cy = height * 0.4;
   const colors = d3.quantize(d3.interpolateHslLong("#b0d5ff", "black"), lotto.chances.length)
   // const colors = d3.quantize(d3.interpolateHslLong("#ad99ff", "black"), lotto.chances.length)
   // const colors = d3.quantize(d3.interpolateHslLong("#ffba8f", "#420600"), lotto.chances.length)
@@ -65,12 +85,14 @@ function draw(){
   // const colors = d3.schemeSpectral[lotto.chances.length]
   lotto.chances.sort((a, b) => a.odds - b.odds)
 
-  const pool = width * height;
+  const pool = width * height
+  const areas = calcAreas(pool)
   for (var i = 0; i < lotto.chances.length; i++) {
     let chance = lotto.chances[i];
-    chance.area = pool / chance.odds;
+    // chance.area = pool / chance.odds;
+    chance.area = areas[i]
     chance.radius = Math.sqrt(chance.area / Math.PI)
-    drawCircle(0, 0, chance.radius, colors[i])
+    drawCircle(cx, cy, chance.radius, colors[i])
   }
 }
 
@@ -79,11 +101,12 @@ function buyLotto(){
   winnings -= lotto.cost;
   const x = Math.random() * canvas.width;
   const y = Math.random() * canvas.height;
-  const dx = x - canvas.width / 2;
-  const dy = y - canvas.height / 2;
+  const dx = x - cx;
+  const dy = y - cy;
   const won = lotto.chances.findLast(chance => Math.sqrt(dx * dx + dy * dy) < chance.radius)
 
   if (won) {
+    won.count = won.count || 0;
     won.count++;
     winnings += won.winnings;
   }
